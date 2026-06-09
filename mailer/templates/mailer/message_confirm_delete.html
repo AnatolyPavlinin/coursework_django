@@ -1,5 +1,7 @@
 {% extends 'mailer/base_generic.html' %}
 
+{% block title %}Подтвердите удаление{% endblock %}
+
 {% block content %}
 <h1>Вы уверены, что хотите удалить "{{ object }}"?</h1>
 
@@ -7,6 +9,7 @@
   {% csrf_token %}
   <p>Это действие необратимо.</p>
   <button type="submit" class="btn btn-danger">Да, удалить</button>
-  <a href="{% url 'mailer:recipient-list' %}" class="btn btn-secondary">Отмена</a>
+    или
+  <a href="{% url 'mailer:message-list' %}" class="btn btn-secondary">Отмена</a>
 </form>
 {% endblock %}
