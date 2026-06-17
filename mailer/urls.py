@@ -7,7 +7,8 @@ from .views import (
     MessageListView,
     MessageCreateView,
     MessageDeleteView,
-    MessageUpdateView
+    MessageUpdateView,
+    CampaignListView,
 )
 
 app_name = "mailer"
@@ -22,4 +23,7 @@ urlpatterns = [
     path('messages/create/', MessageCreateView.as_view(), name='message-create'),
     path('messages/<int:pk>/update/', MessageUpdateView.as_view(), name='message-update'),
     path('messages/<int:pk>/delete/', MessageDeleteView.as_view(), name='message-delete'),
+
+    path('campaign/', CampaignListView.as_view(), name='campaign-list'),
+
 ]

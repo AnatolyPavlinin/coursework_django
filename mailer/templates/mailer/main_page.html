@@ -1,0 +1,43 @@
+{% extends 'mailer/base_generic.html' %}
+
+{% block title %}Главная - Статистика рассылок{% endblock %}
+
+{% block content %}
+<div class="container">
+  <h1>Статистика системы рассылок</h1>
+
+  <div class="row g-4">
+    <div class="col-md-4">
+      <div class="card text-bg-primary mb-3">
+          <div class="card-body">
+              <h5 class="card-title">Всего рассылок</h5>
+              <p class="card-text display-6">{{ total_campaigns }}</p>
+          </div>
+      </div>
+    </div>
+
+
+    <div class="col-md-4">
+      <div class="card text-bg-success mb-3">
+          <div class="card-body">
+              <h5 class="card-title">Активных рассылок</h5>
+              <p class="card-text display-6">{{ active_campaigns }}</p>
+          </div>
+      </div>
+    </div>
+
+
+    <div class="col-md-4">
+      <div class="card text-bg-info mb-3">
+          <div class="card-body">
+              <h5 class="card-title">Уникальных получателей</h5>
+              <p class="card-text display-6">{{ unique_recipients }}</p>
+          </div>
+      </div>
+    </div>
+  </div>
+
+  <a href="{% url 'mailer:campaign-list' %}" class="btn btn-outline-dark mt-4">Перейти к списку рассылок</a>
+
+</div>
+{% endblock %}

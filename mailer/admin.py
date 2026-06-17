@@ -1,5 +1,5 @@
-from django.contrib import admin
-from .models import Recipient, Message
+from django.contrib import admin, messages
+from .models import Recipient, Message, Campaign
 
 @admin.register(Recipient)
 class RecipientAdmin(admin.ModelAdmin):
@@ -16,3 +16,27 @@ class MessageAdmin(admin.ModelAdmin):
     def body_preview(self, obj):
         return obj.body_text[:70] + "..." if len(obj.body_text) > 70 else obj.body_text
     body_preview.short_description = 'Текст сообщения'
+
+
+@admin.register(Campaign)
+class CampaignAdmin(admin.ModelAdmin):
+    list_display = ('id', 'status', 'message', 'end_datetime', 'count_recipients')
+    list_filter = ('status', 'end_datetime',)
+    filter_horizontal = ('recipients',)
+    readonly_fields = ('first_send_datetime',)
+    actions = ['run_campaign']
+
+    def count_recipients(self, obj):
+        return obj.recipients.count()
+    count_recipients.short_description = 'Кол-во получателей'
+
+    def run_campaign(self, request, queryset):
+        """Административный запуск рассылок."""
+        for campaign in queryset:
+            try:
+                campaign.send()
+                self.message_user(request, f"Расслыка #{campaign.pk} успешно запущена.", level=messages.SUCCESS)
+            except ValueError as e:
+                self.message_user(request, str(e), level=messages.WARNING)
+
+    run_campaign.short_description = "Запустить выбранные расслыки"

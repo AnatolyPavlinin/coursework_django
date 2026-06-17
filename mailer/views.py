@@ -1,7 +1,7 @@
 from django.shortcuts import render
-from django.views.generic import ListView, CreateView, UpdateView, DeleteView
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView, TemplateView
 from django.urls import reverse_lazy
-from .models import Recipient, Message
+from .models import Recipient, Message, Campaign
 
 
 class RecipientListView(ListView):
@@ -48,3 +48,21 @@ class MessageDeleteView(DeleteView):
     model = Message
     template_name = 'mailer/message_confirm_delete.html'
     success_url = reverse_lazy('mailer:message-list')
+
+
+class MainPageView(TemplateView):
+    template_name = 'mailer/main_page.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['total_campaigns'] = Campaign.objects.count()
+        context['active_campaigns'] = Campaign.objects.filter(status=Campaign.STATUS_LAUNCHED).count()
+        context['unique_recipients'] = Recipient.objects.count()
+
+        return context
+
+
+class CampaignListView(ListView):
+    model = Campaign
+    template_name = 'mailer/campaign_list.html'
+    context_object_name = 'mailer:campaigns'
