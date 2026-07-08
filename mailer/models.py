@@ -91,18 +91,25 @@ class Campaign(models.Model):
 
     def send(self):
         """Метод для запуска рассылки."""
+
+        if timezone.now() < self.first_send_datetime:
+            raise ValidationError("Рассылку нельзя запустить раньше запланированного времени.")
+
         if self.status not in [self.STATUS_CREATED, self.STATUS_LAUNCHED]:
             raise ValueError(f"Нельзя отправить рассылку со статусом '{self.status}'")
 
-        # Обновляем статус и дату первой отправки
+        # Обновляем статус и дату первой отправки только если это первый запуск
         if self.first_send_datetime is None:
             self.first_send_datetime = timezone.now()
             self.status = self.STATUS_LAUNCHED
-            self.save()
+            self.save(update_fields=['first_send_datetime', 'status'])
 
         subject = self.message.subject
         body = self.message.body_text
         recipient_list = list(self.recipients.values_list('email', flat=True))
+
+        #  пустой список для накопления объектов попыток
+        attempts_to_create = []
 
         for recipient_email in recipient_list:
             try:
@@ -113,17 +120,25 @@ class Campaign(models.Model):
                     recipient_list=[recipient_email],
                     fail_silently=False,
                 )
-                SendAttempt.objects.create(
+
+                attempt = SendAttempt(
                     campaign=self,
                     status=SendAttempt.STATUS_SUCCESS,
                     server_response=f'Письмо отправлено на {recipient_email}'
                 )
+                attempts_to_create.append(attempt)
+
             except Exception as e:
-                SendAttempt.objects.create(
+
+                attempt = SendAttempt(
                     campaign=self,
                     status=SendAttempt.STATUS_FAILURE,
                     server_response=str(e)
                 )
+                attempts_to_create.append(attempt)
+
+        if attempts_to_create:
+            SendAttempt.objects.bulk_create(attempts_to_create)
 
     class Meta:
         verbose_name = "Рассылка"
