@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'allauth.account',
     'allauth.socialaccount',
     "mailer",
+    "django_extensions",
 ]
 
 MIDDLEWARE = [
@@ -130,3 +131,21 @@ MEDIA_ROOT = BASE_DIR / 'media'
 SITE_ID = 1
 
 AUTH_USER_MODEL = 'mailer.CustomUser'
+
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/'
+
+ACCOUNT_LOGIN_METHODS = {
+    'email': {'EMAIL_CONFIRMATION_AUTHENTICATION': False},
+}
+ACCOUNT_SIGNUP_FIELDS = [
+    ('email*', 'Email'),
+    ('password1*', 'Пароль'),
+    ('password2*', 'Подтверждение пароля'),
+]
+
+ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+
+ACCOUNT_UNIQUE_EMAIL = True
+
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

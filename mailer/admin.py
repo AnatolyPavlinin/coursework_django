@@ -1,11 +1,20 @@
+# mailer/admin.py
+
 from django.contrib import admin, messages
-from .models import Recipient, Message, Campaign
+from .models import Recipient, Message, Campaign, SendAttempt
+
 
 @admin.register(Recipient)
 class RecipientAdmin(admin.ModelAdmin):
     list_display = ('id', 'full_name', 'email')
     search_fields = ('full_name', 'email')
     list_filter = ('comment',)
+
+    def save_model(self, request, obj, form, change):
+        """Вызывается при сохранении объекта в админке."""
+        if not change:
+            obj.owner = request.user
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(Message)
@@ -15,6 +24,7 @@ class MessageAdmin(admin.ModelAdmin):
 
     def body_preview(self, obj):
         return obj.body_text[:70] + "..." if len(obj.body_text) > 70 else obj.body_text
+
     body_preview.short_description = 'Текст сообщения'
 
 
@@ -26,8 +36,15 @@ class CampaignAdmin(admin.ModelAdmin):
     readonly_fields = ('first_send_datetime',)
     actions = ['run_campaign']
 
+    def save_model(self, request, obj, form, change):
+        """Вызывается при сохранении объекта в админке."""
+        if not change:
+            obj.owner = request.user
+        super().save_model(request, obj, form, change)
+
     def count_recipients(self, obj):
         return obj.recipients.count()
+
     count_recipients.short_description = 'Кол-во получателей'
 
     def run_campaign(self, request, queryset):
@@ -35,8 +52,12 @@ class CampaignAdmin(admin.ModelAdmin):
         for campaign in queryset:
             try:
                 campaign.send()
-                self.message_user(request, f"Расслыка #{campaign.pk} успешно запущена.", level=messages.SUCCESS)
+                self.message_user(
+                    request,
+                    f"Рассылка #{campaign.pk} успешно запущена.",
+                    level=messages.SUCCESS
+                )
             except ValueError as e:
                 self.message_user(request, str(e), level=messages.WARNING)
 
-    run_campaign.short_description = "Запустить выбранные расслыки"
+    run_campaign.short_description = "Запустить выбранные рассылки"
