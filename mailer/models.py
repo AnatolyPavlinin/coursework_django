@@ -2,6 +2,23 @@ from django.db import models
 from django.utils import timezone
 from django.core.mail import send_mail
 from django.core.exceptions import ValidationError
+from django.contrib.auth.models import AbstractUser
+from django.urls import reverse
+
+
+class CustomUser(AbstractUser):
+    """Кастомная модель пользователя с ролью менеджера."""
+    is_manager = models.BooleanField(
+        default=False,
+        verbose_name='Является менеджером'
+    )
+
+    def __str__(self):
+        return self.email or self.username
+
+    class Meta:
+        verbose_name = 'Пользователь'
+        verbose_name_plural = 'Пользователи'
 
 
 
@@ -10,6 +27,12 @@ class Recipient(models.Model):
     email = models.EmailField(unique=True, verbose_name="Email")
     full_name = models.CharField(max_length=150, verbose_name="Ф.И.О")
     comment = models.TextField(blank=True, verbose_name="Комментарий")
+    owner = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name='recipients',
+        verbose_name='Владелец получателя'
+    )
 
     def __str__(self):
         return f"{self.full_name} <{self.email}>" if self.full_name else self.email
@@ -85,6 +108,13 @@ class Campaign(models.Model):
     status = models.CharField(max_length=20,choices=STATUS_CHOICES,default=STATUS_CREATED,verbose_name="Статус")
     message = models.ForeignKey(Message,on_delete=models.PROTECT,verbose_name="Сообщение")
     recipients = models.ManyToManyField(Recipient,verbose_name="Получатели")
+
+    owner = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name='campaigns',
+        verbose_name='Владелец рассылки'
+    )
 
     def __str__(self):
         return f"Рассылка #{self.pk} - {self.status}"
