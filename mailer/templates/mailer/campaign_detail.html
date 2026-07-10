@@ -1,0 +1,67 @@
+{% extends 'mailer/base_generic.html' %}
+
+{% block title %}Рассылка #{{ campaign.id }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Детали рассылки</h1>
+        <!-- Кнопки возврата к списку и редактированию -->
+        <a href="{% url 'mailer:campaign-list' %}" class="btn btn-outline-dark">Назад к списку</a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <dl class="row">
+                <dt class="col-sm-3">ID:</dt>
+                <dd class="col-sm-9">#{{ campaign.id }}</dd>
+
+                <dt class="col-sm-3">Статус:</dt>
+                <dd class="col-sm-9">
+                    <span class="badge bg-primary">{{ campaign.status }}</span>
+                </dd>
+
+                <dt class="col-sm-3">Сообщение:</dt>
+                <dd class="col-sm-9">{{ campaign.message.subject }}</dd>
+
+                <dt class="col-sm-3">Период действия:</dt>
+                <dd class="col-sm-9">
+                    {{ campaign.start_time|date:"d.m.Y H:i" }} — {{ campaign.end_time|date:"d.m.Y H:i" }}
+                </dd>
+
+                <dt class="col-sm-3">Дата первого запуска:</dt>
+                <dd class="col-sm-9">
+                    {% if campaign.first_send_datetime %}
+                        {{ campaign.first_send_datetime|date:"d.m.Y H:i" }}
+                    {% else %}
+                        Еще не запускалась
+                    {% endif %}
+                </dd>
+
+                <dt class="col-sm-3">Получатели:</dt>
+                <dd class="col-sm-9">
+                    <ul class="list-group list-group-flush">
+                        {% for recipient in campaign.recipients.all %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ recipient.email }}
+                                <span class="badge bg-light text-dark rounded-pill">{{ recipient.full_name }}</span>
+                            </li>
+                        {% empty %}
+                            <li class="list-group-item">Список пуст.</li>
+                        {% endfor %}
+                    </ul>
+                </dd>
+            </dl>
+        </div>
+        <div class="card-footer text-end">
+            <!-- Проверка владельца перед показом кнопок управления (как в списке) -->
+            {% if campaign.owner == request.user or request.user.is_manager %}
+                <a href="{% url 'mailer:campaign-update' campaign.pk %}" class="btn btn-warning me-2">Редактировать</a>
+                {% if campaign.owner == request.user %}
+                    <a href="{% url 'mailer:campaign-delete' campaign.pk %}" class="btn btn-danger">Удалить</a>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -9,6 +9,12 @@ from .views import (
     MessageDeleteView,
     MessageUpdateView,
     CampaignListView,
+    ManagerDashboardView,
+    CampaignCreateView,
+    CampaignDetailView,
+    CampaignDeleteView,
+    CampaignUpdateView,
+    BaseCampaignFormMixin,
 )
 
 app_name = "mailer"
@@ -25,5 +31,11 @@ urlpatterns = [
     path('messages/<int:pk>/delete/', MessageDeleteView.as_view(), name='message-delete'),
 
     path('campaign/', CampaignListView.as_view(), name='campaign-list'),
+    path("campaign/create/", CampaignCreateView.as_view(), name="campaign-create"),
+    path("campaign/<int:pk>/", CampaignDetailView.as_view(), name="campaign-detail"),
+    path("campaign/<int:pk>/update/", CampaignUpdateView.as_view(), name="campaign-update"),
+    path("campaign/<int:pk>/delete/", CampaignDeleteView.as_view(), name="campaign-delete"),
+
+    path("manager/", ManagerDashboardView.as_view(), name="manager-dashboard"),
 
 ]

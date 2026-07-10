@@ -98,77 +98,86 @@ class Campaign(models.Model):
         (STATUS_COMPLETED, 'Завершена'),
     ]
 
+    start_time = models.DateTimeField(
+        verbose_name="Дата и время начала отправки",
+        help_text="Рассылка не начнется раньше этого времени."
+    )
+
+    end_time = models.DateTimeField(verbose_name="Дата и время окончания отправки")
+
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_CREATED, verbose_name="Статус")
+
+    message = models.ForeignKey(Message, on_delete=models.PROTECT, verbose_name="Сообщение")
+    recipients = models.ManyToManyField(Recipient, verbose_name="Получатели")
+    owner = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='campaigns',
+                              verbose_name='Владелец рассылки')
+
     first_send_datetime = models.DateTimeField(
         verbose_name="Дата и время первой отправки",
         null=True,
         blank=True,
-        help_text="Будет заполнено автоматически при первой отправке."
-    )
-    end_datetime = models.DateTimeField(verbose_name="Дата и время окончания отправки")
-    status = models.CharField(max_length=20,choices=STATUS_CHOICES,default=STATUS_CREATED,verbose_name="Статус")
-    message = models.ForeignKey(Message,on_delete=models.PROTECT,verbose_name="Сообщение")
-    recipients = models.ManyToManyField(Recipient,verbose_name="Получатели")
-
-    owner = models.ForeignKey(
-        CustomUser,
-        on_delete=models.CASCADE,
-        related_name='campaigns',
-        verbose_name='Владелец рассылки'
+        editable=False
     )
 
     def __str__(self):
         return f"Рассылка #{self.pk} - {self.status}"
 
+    # --- ДОБАВЛЯЕМ ДИНАМИЧЕСКИЙ СТАТУС ---
+    def update_status(self):
+        now = timezone.now()
+
+        if now < self.start_time:
+            new_status = self.STATUS_CREATED
+        elif self.start_time <= now <= self.end_time:
+            new_status = self.STATUS_LAUNCHED
+        else:
+            new_status = self.STATUS_COMPLETED
+
+        if self.status != new_status:
+            self.status = new_status
+            # Сохраняем только поле статуса, чтобы не сбивать дату первой отправки
+            self.save(update_fields=['status'])
+
     def send(self):
         """Метод для запуска рассылки."""
+        now = timezone.now()
 
-        if timezone.now() < self.first_send_datetime:
-            raise ValidationError("Рассылку нельзя запустить раньше запланированного времени.")
+        # Проверка окна отправки (валидация)
+        if not (self.start_time <= now <= self.end_time):
+            raise ValidationError("Отправка возможна только в период между датой начала и окончания.")
 
-        if self.status not in [self.STATUS_CREATED, self.STATUS_LAUNCHED]:
-            raise ValueError(f"Нельзя отправить рассылку со статусом '{self.status}'")
+        if self.status == self.STATUS_COMPLETED:
+            raise ValueError(f"Нельзя отправить завершенную рассылку.")
 
-        # Обновляем статус и дату первой отправки только если это первый запуск
+        updated_fields = []
+
+        # Фиксируем момент первого старта
         if self.first_send_datetime is None:
-            self.first_send_datetime = timezone.now()
+            self.first_send_datetime = now
+            updated_fields.append('first_send_datetime')
+
+        if self.status != self.STATUS_LAUNCHED:
             self.status = self.STATUS_LAUNCHED
-            self.save(update_fields=['first_send_datetime', 'status'])
+            updated_fields.append('status')
+
+        if updated_fields:
+            self.save(update_fields=updated_fields)
 
         subject = self.message.subject
         body = self.message.body_text
         recipient_list = list(self.recipients.values_list('email', flat=True))
 
-        #  пустой список для накопления объектов попыток
         attempts_to_create = []
-
-        for recipient_email in recipient_list:
+        for email in recipient_list:
             try:
-                send_mail(
-                    subject=subject,
-                    message=body,
-                    from_email=None,
-                    recipient_list=[recipient_email],
-                    fail_silently=False,
-                )
-
-                attempt = SendAttempt(
-                    campaign=self,
-                    status=SendAttempt.STATUS_SUCCESS,
-                    server_response=f'Письмо отправлено на {recipient_email}'
-                )
-                attempts_to_create.append(attempt)
-
+                send_mail(subject, body, None, [email], fail_silently=False)
+                attempts_to_create.append(
+                    SendAttempt(campaign=self, status=SendAttempt.STATUS_SUCCESS, server_response=f'OK'))
             except Exception as e:
+                attempts_to_create.append(
+                    SendAttempt(campaign=self, status=SendAttempt.STATUS_FAILURE, server_response=str(e)))
 
-                attempt = SendAttempt(
-                    campaign=self,
-                    status=SendAttempt.STATUS_FAILURE,
-                    server_response=str(e)
-                )
-                attempts_to_create.append(attempt)
-
-        if attempts_to_create:
-            SendAttempt.objects.bulk_create(attempts_to_create)
+        SendAttempt.objects.bulk_create(attempts_to_create)
 
     class Meta:
         verbose_name = "Рассылка"
