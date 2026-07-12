@@ -1,0 +1,83 @@
+{% extends 'mailer/base_generic.html' %}
+
+{% block title %}Мои рассылки{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Рассылки</h1>
+        <!-- Кнопка создания видна всем авторизованным -->
+        {% if user.is_authenticated %}
+            <a href="{% url 'mailer:campaign-create' %}" class="btn btn-primary">
+                Создать новую рассылку
+            </a>
+        {% endif %}
+    </div>
+
+    <!-- Таблица рассылок -->
+    <table class="table table-striped table-hover shadow-sm">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Сообщение</th>
+                <th>Получателей</th>
+                <th>Статус</th>
+                <th>Период действия</th>
+                <th style="width: 180px;" class="text-center">Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for campaign in campaigns %}
+            <tr>
+                <td><strong>#{{ campaign.id }}</strong></td>
+                <td>{{ campaign.message.subject|truncatewords:5 }}</td>
+                <td class="text-center">{{ campaign.recipients.count }}</td>
+                
+                <td>
+                    <!-- Динамический статус из модели -->
+                    <span class="badge 
+                        {% if campaign.status == 'Создана' %}bg-info
+                        {% elif campaign.status == 'Запущена' %}bg-success
+                        {% else %}bg-secondary{% endif %} rounded-pill">
+                        {{ campaign.status }}
+                    </span>
+                </td>
+
+                <td>
+                    {{ campaign.start_time|date:"d.m.Y H:i" }} — {{ campaign.end_time|date:"d.m.Y H:i" }}
+                </td>
+
+                <td class="text-center">
+                    <!-- Блок кнопок действий -->
+                    
+                    <!-- Просмотр доступен всегда для владельца или менеджера -->
+                    <a href="{% url 'mailer:campaign-detail' campaign.pk %}" class="btn btn-sm btn-outline-info me-1">
+                        <i data-feather="eye"></i>
+                    </a>
+
+                    <!-- Редактирование только если владелец ИЛИ менеджер -->
+                    {% if campaign.owner == user or user.is_manager %}
+                        <a href="{% url 'mailer:campaign-update' campaign.pk %}" class="btn btn-sm btn-outline-warning me-1">
+                            <i data-feather="edit"></i>
+                        </a>
+                        
+                        <!-- Удаление ТОЛЬКО владельцу (менеджеры не могут удалять чужое) -->
+                        {% if campaign.owner == user %}
+                            <a href="{% url 'mailer:campaign-delete' campaign.pk %}" class="btn btn-sm btn-outline-danger">
+                                <i data-feather="trash-2"></i>
+                            </a>
+                        {% endif %}
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="text-center py-5 text-muted fst-italic">
+                    У вас пока нет ни одной рассылки.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
