@@ -10,6 +10,7 @@ from django.utils.decorators import method_decorator
 from django.core.exceptions import ValidationError
 
 
+
 User = get_user_model()
 
 
@@ -176,10 +177,22 @@ class MainPageView(TemplateView):
         return self.render_to_response(context)
 
 
-class CampaignListView(LoginRequiredMixin, IsOwnerFilterMixin, ListView):
+class CampaignListView(LoginRequiredMixin, ListView):
     model = Campaign
     template_name = 'mailer/campaign_list.html'
     context_object_name = 'campaigns'
+
+    def get_queryset(self):
+        """Переопределяем запрос, чтобы фильтровать данные."""
+        qs = super().get_queryset()
+
+        # Если пользователь НЕ менеджер, показываем только его рассылки
+        if not self.request.user.is_manager:
+            qs = qs.filter(owner=self.request.user)
+
+        return qs.order_by('-start_time')
+
+
 
 class BaseCampaignFormMixin:
     def clean(self):
